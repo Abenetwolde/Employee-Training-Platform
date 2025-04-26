@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { formatDate, isGroupAvailable, canSwapGroups } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import NewSwapForm from '@/components/forms/new-swap-form';
 
@@ -12,39 +12,38 @@ export const metadata: Metadata = {
   description: 'Create a new swap request',
 };
 
-export default async function NewSwapPage({
-  searchParams,
-}: {
-  searchParams: { targetGroupId?: string };
-}) {
+interface PageProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function NewSwapPage({ searchParams }: PageProps) {
   const user = await getCurrentUser();
   
   if (!user) {
     return null; // Middleware will handle redirect
   }
   
-  // Get user's current group
+  // Get user's current group with required fields
   const currentGroup = user.groupId 
     ? await prisma.group.findUnique({
         where: { id: user.groupId },
-        include: { users: true }
+        include: { 
+          users: { select: { id: true } } // Only include necessary fields
+        }
       })
     : null;
   
-  // Get all available groups
+  // Get all available groups with required fields
   const groups = await prisma.group.findMany({
     where: {
       id: { not: user.groupId }, // Exclude user's current group
+      endDate: { gt: new Date() } // Only active groups
     },
-    include: { users: true },
+    include: { 
+      users: { select: { id: true } } // Only include necessary fields
+    },
     orderBy: { startDate: 'asc' }
   });
-  
-  // Filter groups that are available for swapping
-  const availableGroups = groups.filter(group => 
-    isGroupAvailable(group) && 
-    (currentGroup ? canSwapGroups(currentGroup, group) : false)
-  );
   
   // Get user's pending swap requests
   const pendingSwapRequests = await prisma.swapRequest.findMany({
@@ -58,11 +57,10 @@ export default async function NewSwapPage({
   
   const pendingGroupIds = pendingSwapRequests.map(request => request.targetGroupId);
   
-  // Pre-selected group from URL
-  const preselectedGroupId = searchParams.targetGroupId;
-  const preselectedGroup = preselectedGroupId 
-    ? availableGroups.find(group => group.id === preselectedGroupId)
-    : null;
+  // Pre-selected group from URL with proper type checking
+  const preselectedGroupId = typeof searchParams?.targetGroupId === 'string' 
+    ? searchParams?.targetGroupId 
+    : undefined;
 
   return (
     <div className="space-y-6">
@@ -80,7 +78,7 @@ export default async function NewSwapPage({
             <CardDescription>You need to be assigned to a group first</CardDescription>
           </CardHeader>
           <CardContent>
-            <p>You are not currently assigned to any training group. Please contact an administrator to be assigned to a group.</p>
+            <p>You are not currently assigned to any training group.</p>
           </CardContent>
           <CardFooter>
             <Link href="/dashboard">
@@ -88,19 +86,14 @@ export default async function NewSwapPage({
             </Link>
           </CardFooter>
         </Card>
-      ) : availableGroups.length === 0 ? (
+      ) : groups.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>No Available Groups</CardTitle>
             <CardDescription>There are no groups available for swapping</CardDescription>
           </CardHeader>
           <CardContent>
-            <p>There are currently no groups available for swapping. This could be because:</p>
-            <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li>All groups are full</li>
-              <li>Your current group is too small to allow swapping</li>
-              <li>No groups meet the balance requirements</li>
-            </ul>
+            <p>There are currently no groups available for swapping.</p>
           </CardContent>
           <CardFooter>
             <Link href="/groups">
@@ -110,12 +103,26 @@ export default async function NewSwapPage({
         </Card>
       ) : (
         <NewSwapForm 
-          currentGroup={currentGroup} 
-          availableGroups={availableGroups} 
+          currentGroup={{
+            id: currentGroup.id,
+            name: currentGroup.name,
+            startDate: currentGroup.startDate,
+            endDate: currentGroup.endDate,
+            maxSize: currentGroup.maxSize,
+            users: currentGroup.users
+          }} 
+          availableGroups={groups.map(g => ({
+            id: g.id,
+            name: g.name,
+            startDate: g.startDate,
+            endDate: g.endDate,
+            maxSize: g.maxSize,
+            users: g.users
+          }))} 
           pendingGroupIds={pendingGroupIds}
           preselectedGroupId={preselectedGroupId}
         />
       )}
     </div>
   );
-} 
+}

@@ -13,7 +13,7 @@ interface Group {
   startDate: Date;
   endDate: Date;
   maxSize: number;
-  users: any[];
+  users: { id: string }[];
 }
 
 interface NewSwapFormProps {
@@ -54,7 +54,9 @@ export default function NewSwapForm({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ targetGroupId: selectedGroupId }),
+        body: JSON.stringify({ 
+          targetGroupId: selectedGroupId 
+        }),
       });
       
       const data = await response.json();
@@ -96,7 +98,7 @@ export default function NewSwapForm({
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="targetGroup" className="text-sm font-medium">
+              <label className="text-sm font-medium">
                 Select Target Group
               </label>
               <div className="grid gap-2">
@@ -153,4 +155,4 @@ export default function NewSwapForm({
       </form>
     </Card>
   );
-} 
+}

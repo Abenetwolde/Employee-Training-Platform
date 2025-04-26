@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { login } from '@/lib/auth';
 import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
 
 const loginSchema = z.object({
   employeeId: z.string().min(1, 'Employee ID is required'),
@@ -27,10 +27,30 @@ export async function POST(request: NextRequest) {
     console.log('Processing login for employee ID:', employeeId);
     
     try {
-      console.log('Calling login function for employee ID:', employeeId);
-      const user = await login(employeeId);
-      console.log('Login successful for user:', user.id);
+      // Find or create user
+      let user = await prisma.user.findUnique({
+        where: { employeeId }
+      });
       
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            employeeId,
+            name: `Employee ${employeeId}`,
+            role: 'employee',
+                  // Initialize all relations as empty
+      swapRequests: { create: [] },
+      swapOffers: { create: [] },
+      notifications: { create: [] },
+      createdAt: new Date(),
+      updatedAt: new Date()
+          }
+        });
+      }
+      
+      console.log('User found/created:', user.id);
+      
+      // Return success response
       return NextResponse.json({ 
         success: true, 
         user: {
@@ -40,6 +60,7 @@ export async function POST(request: NextRequest) {
           role: user.role
         }
       });
+      
     } catch (loginError) {
       console.error('Login error:', loginError);
       return NextResponse.json(

@@ -11,7 +11,7 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  url      = "mongodb://localhost:27017/employee_training"
+  url      = env("DATABASE_URL")
 }
 
 model User {
