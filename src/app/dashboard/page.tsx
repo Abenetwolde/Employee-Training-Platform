@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Dashboard - Employee Training Platform',
@@ -64,6 +65,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             {currentGroup ? (
+                    <Link href={`/groups/${currentGroup.id}`}>
               <div className="space-y-2">
                 <p className="font-medium">{currentGroup.name}</p>
                 <p className="text-sm text-muted-foreground">
@@ -73,6 +75,7 @@ export default async function DashboardPage() {
                   {currentGroup.users.length} of {currentGroup.maxSize} participants
                 </p>
               </div>
+              </Link>
             ) : (
               <p className="text-sm text-muted-foreground">You are not assigned to any group yet.</p>
             )}

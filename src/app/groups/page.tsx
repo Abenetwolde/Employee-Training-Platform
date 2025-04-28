@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { formatDate, isGroupAvailable, canSwapGroups } from '@/lib/utils';
 import Link from 'next/link';
+import { UsersIcon } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Training Groups - Employee Training Platform',
@@ -27,11 +28,25 @@ export default async function GroupsPage() {
     : null;
   
   // Get all groups
+  // const groups = await prisma.group.findMany({
+  //   include: { users: true },
+  //   orderBy: { startDate: 'asc' }
+  // });
+    
+  // Get all groups with user details
   const groups = await prisma.group.findMany({
-    include: { users: true },
+    include: { 
+      users: {
+        select: {
+          id: true,
+          employeeId: true,
+          name: true,
+          role: true
+        }
+      }
+    },
     orderBy: { startDate: 'asc' }
   });
-  
   // Get user's pending swap requests
   const pendingSwapRequests = await prisma.swapRequest.findMany({
     where: {
@@ -87,11 +102,16 @@ export default async function GroupsPage() {
                   )}
                 </div>
               </CardContent>
-              <CardFooter>
+          
+              <CardFooter className="flex flex-col gap-2">
+              <div className="flex gap-2 w-full">
                 {isUserInGroup ? (
+                  <div className='w-full'>
+
                   <Button variant="outline" className="w-full" disabled>
                     Your Current Group
                   </Button>
+                  </div>
                 ) : hasPendingRequest ? (
                   <Button variant="outline" className="w-full" disabled>
                     Request Pending
@@ -105,6 +125,13 @@ export default async function GroupsPage() {
                     {isAvailable ? 'Not Eligible' : 'Group Full'}
                   </Button>
                 )}
+                                  <Link href={{pathname:`/groups/${group.id}`,query: { from: '/groups' },}} className="flex-1">
+                    <Button variant="outline" className="w-full">
+                      <UsersIcon className="h-4 w-4 mr-2" />
+                      View All
+                    </Button>
+                  </Link>
+</div>
               </CardFooter>
             </Card>
           );
